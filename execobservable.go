@@ -30,14 +30,14 @@ type CmdRunner struct {
 }
 
 // RunCommand runs a command with realtime feedback
-func (runner *CmdRunner) RunCommand(command string, progress CmdProgressCallback, flags ...string) {
+func (runner *CmdRunner) RunCommand(command string, dir string, progress CmdProgressCallback, flags ...string) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	fmt.Println("Starting command..")
 	recv := make(chan string)
 	runner.sendCh = make(chan string)
 	go func() {
-		err := runCommandCh(recv, runner.sendCh, "\r\n", command, flags...)
+		err := runCommandCh(recv, runner.sendCh, "\r\n", command, dir, flags...)
 		if err != nil {
 			fmt.Printf("bad shit happneed %v\n", err)
 			runner.ExitState = 1
@@ -66,8 +66,12 @@ func (runner *CmdRunner) Send(s string) {
 }
 
 // RunCommandCh runs an arbitrary command and streams output to a channnel.
-func runCommandCh(stdoutCh chan<- string, stdinCh <-chan string, cutset string, command string, flags ...string) error {
+func runCommandCh(stdoutCh chan<- string, stdinCh <-chan string, cutset string, command string, dir string, flags ...string) error {
 	cmd := exec.Command(command, flags...)
+
+	if dir != "" {
+		cmd.Dir = dir
+	}
 
 	output, err := cmd.StdoutPipe()
 	inputPipe, err := cmd.StdinPipe()
